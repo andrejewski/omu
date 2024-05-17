@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512px" height="512px" viewBox="0 0 512 512" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 52.2 (67145) - http://www.bohemiancoding.com/sketch -->
+    <title>logo</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <linearGradient x1="100%" y1="50%" x2="0%" y2="50%" id="linearGradient-1">
+            <stop stop-color="#FB5A59" offset="0%"></stop>
+            <stop stop-color="#F73837" offset="100%"></stop>
+        </linearGradient>
+    </defs>
+    <g id="logo" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect id="Rectangle" fill="#FFFFFF" x="0" y="0" width="512" height="512" rx="10"></rect>
+        <ellipse id="Oval" fill="#DEE4E3" cx="256" cy="412" rx="189" ry="56"></ellipse>
+        <ellipse id="Oval" fill="#EAF0EF" cx="257.5" cy="316" rx="303.5" ry="143"></ellipse>
+        <ellipse id="Oval" fill="#F68C39" cx="256" cy="303.5" rx="285" ry="130.5"></ellipse>
+        <ellipse id="Oval" fill="#EFCA57" cx="260.5" cy="261" rx="289.5" ry="151"></ellipse>
+        <g id="bottle-2" transform="translate(390.313368, 189.138010) rotate(30.000000) translate(-390.313368, -189.138010) translate(323.813368, 35.138010)">
+            <g id="bottle">
+                <rect id="Rectangle" fill="#DE3130" x="54.1388235" y="234.517766" width="24.7223529" height="73.4822335" rx="4"></rect>
+                <rect id="Rectangle" fill="#E42E2D" x="13.4564706" y="225.449746" width="106.4" height="45.6527919" rx="10"></rect>
+                <rect id="Rectangle" fill="url(#linearGradient-1)" x="0" y="0" width="133" height="255.46802" rx="13"></rect>
+            </g>
+        </g>
+        <path d="M120.477618,234.666815 L117.159514,235.138477 C97.5622967,237.924188 83,254.702877 83,274.497096 L83,274.497096 C83,294.368709 97.4510244,311.289667 117.077806,314.399398 L291.276472,342 L257.352053,208.855 C252.755396,190.814253 239.493657,176.237416 221.966578,169.960531 L216.492146,168 C197.712381,161.274497 176.955163,170.435599 169.267428,188.84241 L164.270659,200.806216 C156.662115,219.02342 140.023384,231.888418 120.477618,234.666815 Z" id="Path-24" stroke="#FB5A59" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"></path>
+    </g>
+</svg>
