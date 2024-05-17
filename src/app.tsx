@@ -165,10 +165,6 @@ function drawScene(model: Model, canvas: HTMLCanvasElement, size: number) {
 
 type Rgb = readonly [number, number, number]
 
-function makeHexColor(rgb: Rgb): string {
-  return `#${rgb.map((c) => c.toString(16).padStart(2, '0')).join('')}`
-}
-
 function update(msg: Msg, model: Model): Change<Msg, Model> {
   switch (msg.type) {
     case 'start_game': {
@@ -384,8 +380,19 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
           left: `${bottleBottom}px`,
         }}
       >
-        <img id="bottle" src={'./bottle.png'} ref={model.bottleRef} />
-        {model.drawing && <img id="spray" src="./spray.png" />}
+        <img alt="" id="bottle" src={'./bottle.png'} ref={model.bottleRef} />
+        {model.drawing && (
+          <img
+            alt=""
+            id="spray"
+            src="./spray.png"
+            style={{
+              // We flip the spray back and forth to flow of ketchup
+              transform:
+                (Date.now() / 100) % 2 > 1 ? 'scale(-1, 1)' : undefined,
+            }}
+          />
+        )}
       </div>
 
       {model.scene === 'about' && (
