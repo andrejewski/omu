@@ -23,7 +23,7 @@ type Model = {
   wallProgress: number
   nextWallColor: Rgb
 
-  ketchupPoints: SizedPoint[]
+  ketchupPaths: SizedPoint[][]
   cursorPosition: Point
   drawing: boolean
   dishId: string
@@ -58,7 +58,7 @@ const init: Change<Msg, Model> = [
     nextWallColor: defaultColor,
     wallProgress: 0,
 
-    ketchupPoints: [],
+    ketchupPaths: [],
     cursorPosition: { x: 0, y: 0 },
     drawing: false,
     dishId: crypto.randomUUID(),
@@ -155,15 +155,150 @@ function drawScene(model: Model, canvas: HTMLCanvasElement, size: number) {
   )
   ctx.fill()
 
-  ctx.fillStyle = '#FB5A59'
-  for (const k of model.ketchupPoints) {
-    ctx.beginPath()
-    ctx.arc(k.x * size, k.y * size, k.size * (size / 50), 0, 2 * Math.PI)
-    ctx.fill()
+  if (!model.ketchupPaths.length) {
+    return
   }
+
+  ctx.fillStyle = '#FB5A59'
+  ctx.strokeStyle = '#FB5A59'
+  ctx.lineJoin = 'round'
+  ctx.lineCap = 'round'
+  const chunkCount = 5
+  const lineWidthScalar = 1.5
+  for (let s = 0; s < model.ketchupPaths.length; s++) {
+    const relativeSegment = model.ketchupPaths[s]
+    const segment = relativeSegment.map(
+      (k): SizedPoint => ({
+        x: k.x * size,
+        y: k.y * size,
+        size: k.size * (size / 50),
+      })
+    )
+
+    ctx.beginPath()
+    const firstPoint = segment[0]
+    if (!firstPoint) {
+      continue
+    }
+
+    if (segment.length <= 2) {
+      ctx.ellipse(
+        firstPoint.x,
+        firstPoint.y,
+        firstPoint.size,
+        firstPoint.size * 0.4,
+        0,
+        0,
+        2 * Math.PI
+      )
+      ctx.fill()
+      continue
+    }
+
+    let runningSum = firstPoint.size
+
+    ctx.moveTo(firstPoint.x, firstPoint.y)
+    let i = 1
+    let c = 1
+    for (; i < segment.length - 2; i++) {
+      c++
+      const point = segment[i]!
+      const nextPoint = segment[i + 1]!
+
+      const midX = (point.x + nextPoint.x) / 2
+      const midY = (point.y + nextPoint.y) / 2
+
+      ctx.quadraticCurveTo(point.x, point.y, midX, midY)
+
+      runningSum += point.size
+
+      if (c % chunkCount === 0) {
+        ctx.lineWidth = lineWidthScalar * (runningSum / chunkCount)
+        ctx.stroke()
+        ctx.closePath()
+        ctx.beginPath()
+        runningSum = 0
+        i--
+      }
+    }
+
+    const secondToLastPoint = segment[i]!
+    const lastPoint = segment[i + 1]!
+    ctx.quadraticCurveTo(
+      secondToLastPoint.x,
+      secondToLastPoint.y,
+      lastPoint.x,
+      lastPoint.y
+    )
+    ctx.lineWidth = lineWidthScalar * (runningSum / (c % chunkCount))
+    ctx.stroke()
+
+    const isLastPath = s + 1 === model.ketchupPaths.length
+    if (!isLastPath) {
+      continue
+    }
+
+    let drawTip = lastPoint
+    if (drawTip) {
+      const radius = model.drawing ? drawTip.size : ctx.lineWidth / 2
+
+      ctx.ellipse(drawTip.x, drawTip.y, radius, radius * 0.4, 0, 0, 2 * Math.PI)
+      // ctx.arc(
+      //   drawTip.x,
+      //   drawTip.y,
+      //   model.drawing ? drawTip.size : ctx.lineWidth / 2,
+      //   0,
+      //   2 * Math.PI
+      // )
+      ctx.fill()
+    }
+  }
+
+  // for (const k of model.ketchupPoints) {
+  //   ctx.beginPath()
+  //   ctx.arc(k.x * size, k.y * size, k.size * (size / 50), 0, 2 * Math.PI)
+  //   ctx.fill()
+  // }
 }
 
 type Rgb = readonly [number, number, number]
+
+function updatePaths(model: Model) {
+  const canvas = model.wheelCanvas.current
+  if (!canvas) {
+    return
+  }
+
+  const bounds = canvas.getBoundingClientRect()
+
+  const { x, y } = model.cursorPosition
+  const newPoint: SizedPoint = {
+    x: (x - bounds.left) / bounds.width,
+    y: (y - bounds.top) / bounds.height,
+    size: Math.random() * 0.75 + 0.25,
+  }
+
+  let lastPath = model.ketchupPaths.at(-1)
+  if (!lastPath) {
+    lastPath = []
+    model.ketchupPaths.push(lastPath)
+  }
+
+  const lastPoint = lastPath.at(-1)
+  const minimumDistThreshold = 0.00125
+  if (lastPoint) {
+    const distX = Math.abs(newPoint.x - lastPoint.x)
+    const distY = Math.abs(newPoint.y - lastPoint.y)
+    if (distX < minimumDistThreshold || distY < minimumDistThreshold) {
+      lastPoint.x = newPoint.x
+      lastPoint.y = newPoint.y
+      lastPoint.size += Math.random() / 10
+      return
+    }
+  }
+
+  lastPath.push(newPoint)
+}
 
 function update(msg: Msg, model: Model): Change<Msg, Model> {
   switch (msg.type) {
@@ -206,46 +341,28 @@ function update(msg: Msg, model: Model): Change<Msg, Model> {
         return [model]
       }
       const [canvas, size] = r
+
+      if (model.drawing) {
+        updatePaths(model)
+      }
+
       drawScene(model, canvas, size)
       return [model]
     }
     case 'mouse_move': {
       const { x, y } = msg
-
-      const cursorPosition = { x, y }
-      if (!model.drawing) {
-        return [{ ...model, cursorPosition }]
-      }
-
-      const canvas = model.wheelCanvas.current
-      if (!canvas) {
-        return [{ ...model, cursorPosition }]
-      }
-
-      const bounds = canvas.getBoundingClientRect()
-
-      const ketchupPoint: SizedPoint = {
-        x: (x - bounds.left) / bounds.width,
-        y: (y - bounds.top) / bounds.height,
-        size: Math.random(),
-      }
-
-      return [
-        {
-          ...model,
-          cursorPosition,
-          ketchupPoints: [...model.ketchupPoints, ketchupPoint],
-        },
-      ]
+      return [{ ...model, cursorPosition: { x, y } }]
     }
     case 'mouse_down': {
-      return [{ ...model, drawing: true }]
+      const { x, y } = msg
+      model.ketchupPaths.push([])
+      return [{ ...model, drawing: true, cursorPosition: { x, y } }]
     }
     case 'mouse_up': {
       return [{ ...model, drawing: false }]
     }
     case 'reset': {
-      return [{ ...model, dishId: crypto.randomUUID(), ketchupPoints: [] }]
+      return [{ ...model, dishId: crypto.randomUUID(), ketchupPaths: [] }]
     }
     case 'download': {
       const canvas = model.wheelCanvas.current
@@ -333,29 +450,17 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
         key={model.dishId}
         className="main-area"
         onMouseDown={(e) => {
-          const div = e.currentTarget
-          if (!div) {
-            return
-          }
-
-          const bounds = div.getBoundingClientRect()
           dispatch({
             type: 'mouse_down',
-            x: e.clientX - bounds.left,
-            y: e.clientY - bounds.top,
+            x: e.clientX,
+            y: e.clientY,
           })
         }}
         onMouseUp={(e) => {
-          const div = e.currentTarget
-          if (!div) {
-            return
-          }
-
-          const bounds = div.getBoundingClientRect()
           dispatch({
             type: 'mouse_up',
-            x: e.clientX - bounds.left,
-            y: e.clientY - bounds.top,
+            x: e.clientX,
+            y: e.clientY,
           })
         }}
       >
