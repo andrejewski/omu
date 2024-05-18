@@ -7,6 +7,7 @@ import {
 } from 'raj-ts/lib/subscription'
 
 type Point = { x: number; y: number }
+type Splat = Point & { base: number; extra: number }
 type SizedPoint = Point & { size: number }
 
 type Model = {
@@ -23,10 +24,12 @@ type Model = {
   wallProgress: number
   nextWallColor: Rgb
 
-  ketchupPaths: SizedPoint[][]
+  ketchupPaths: Splat[][]
   cursorPosition: Point
   drawing: boolean
   dishId: string
+  lastTick: number
+  squeezeDone: boolean
 }
 
 type Msg =
@@ -62,6 +65,8 @@ const init: Change<Msg, Model> = [
     cursorPosition: { x: 0, y: 0 },
     drawing: false,
     dishId: crypto.randomUUID(),
+    lastTick: 0,
+    squeezeDone: false,
   },
 ]
 
@@ -163,95 +168,101 @@ function drawScene(model: Model, canvas: HTMLCanvasElement, size: number) {
   ctx.strokeStyle = '#FB5A59'
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
-  const chunkCount = 5
+  const chunkCount = 2
   const lineWidthScalar = 1.5
+
   for (let s = 0; s < model.ketchupPaths.length; s++) {
     const relativeSegment = model.ketchupPaths[s]
     const segment = relativeSegment.map(
       (k): SizedPoint => ({
         x: k.x * size,
         y: k.y * size,
-        size: k.size * (size / 50),
+        size: (k.base + k.extra) * (size / 40),
       })
     )
 
-    ctx.beginPath()
-    const firstPoint = segment[0]
-    if (!firstPoint) {
-      continue
-    }
-
-    if (segment.length <= 2) {
+    for (const point of segment) {
+      ctx.beginPath()
       ctx.ellipse(
-        firstPoint.x,
-        firstPoint.y,
-        firstPoint.size,
-        firstPoint.size * 0.4,
+        point.x,
+        point.y,
+        point.size,
+        point.size * 0.4,
         0,
         0,
         2 * Math.PI
       )
       ctx.fill()
-      continue
     }
 
-    let runningSum = firstPoint.size
+    // const firstPoint = segment[0]
+    // if (!firstPoint) {
+    //   continue
+    // }
 
-    ctx.moveTo(firstPoint.x, firstPoint.y)
-    let i = 1
-    let c = 1
-    for (; i < segment.length - 2; i++) {
-      c++
-      const point = segment[i]!
-      const nextPoint = segment[i + 1]!
+    // ctx.beginPath()
+    // ctx.ellipse(
+    //   firstPoint.x,
+    //   firstPoint.y,
+    //   firstPoint.size,
+    //   firstPoint.size * 0.4,
+    //   0,
+    //   0,
+    //   2 * Math.PI
+    // )
+    // ctx.fill()
 
-      const midX = (point.x + nextPoint.x) / 2
-      const midY = (point.y + nextPoint.y) / 2
+    // if (segment.length <= 2) {
+    //   continue
+    // }
 
-      ctx.quadraticCurveTo(point.x, point.y, midX, midY)
+    // let lastSize = firstPoint.size
 
-      runningSum += point.size
+    // ctx.beginPath()
+    // ctx.moveTo(firstPoint.x, firstPoint.y)
+    // let i = 1
+    // let c = 1
+    // for (; i < segment.length - 2; i++) {
+    //   c++
+    //   const point = segment[i]!
+    //   const nextPoint = segment[i + 1]!
 
-      if (c % chunkCount === 0) {
-        ctx.lineWidth = lineWidthScalar * (runningSum / chunkCount)
-        ctx.stroke()
-        ctx.closePath()
-        ctx.beginPath()
-        runningSum = 0
-        i--
-      }
-    }
+    //   const midX = (point.x + nextPoint.x) / 2
+    //   const midY = (point.y + nextPoint.y) / 2
 
-    const secondToLastPoint = segment[i]!
-    const lastPoint = segment[i + 1]!
-    ctx.quadraticCurveTo(
-      secondToLastPoint.x,
-      secondToLastPoint.y,
-      lastPoint.x,
-      lastPoint.y
-    )
-    ctx.lineWidth = lineWidthScalar * (runningSum / (c % chunkCount))
-    ctx.stroke()
+    //   ctx.quadraticCurveTo(point.x, point.y, midX, midY)
 
-    const isLastPath = s + 1 === model.ketchupPaths.length
-    if (!isLastPath) {
-      continue
-    }
+    //   ctx.lineWidth = lineWidthScalar * (point.size + lastSize / 2)
+    //   ctx.stroke()
+    //   ctx.closePath()
+    //   ctx.beginPath()
 
-    let drawTip = lastPoint
-    if (drawTip) {
-      const radius = model.drawing ? drawTip.size : ctx.lineWidth / 2
+    //   lastSize = point.size
+    // }
 
-      ctx.ellipse(drawTip.x, drawTip.y, radius, radius * 0.4, 0, 0, 2 * Math.PI)
-      // ctx.arc(
-      //   drawTip.x,
-      //   drawTip.y,
-      //   model.drawing ? drawTip.size : ctx.lineWidth / 2,
-      //   0,
-      //   2 * Math.PI
-      // )
-      ctx.fill()
-    }
+    // const secondToLastPoint = segment[i]!
+    // const lastPoint = segment[i + 1]!
+    // ctx.quadraticCurveTo(
+    //   secondToLastPoint.x,
+    //   secondToLastPoint.y,
+    //   lastPoint.x,
+    //   lastPoint.y
+    // )
+    // ctx.lineWidth = lineWidthScalar * (lastSize + secondToLastPoint.size / 2)
+    // ctx.stroke()
+
+    // ctx.beginPath()
+    // const radius = lastPoint.size
+    // ctx.ellipse(
+    //   lastPoint.x,
+    //   lastPoint.y,
+    //   radius,
+    //   radius * 0.4,
+    //   0,
+    //   0,
+    //   2 * Math.PI
+    // )
+    // ctx.fill()
   }
 
   // for (const k of model.ketchupPoints) {
@@ -263,7 +274,7 @@ function drawScene(model: Model, canvas: HTMLCanvasElement, size: number) {
 
 type Rgb = readonly [number, number, number]
 
-function updatePaths(model: Model) {
+function updatePaths(model: Model, delta: number) {
   const canvas = model.wheelCanvas.current
   if (!canvas) {
     return
@@ -272,29 +283,63 @@ function updatePaths(model: Model) {
   const bounds = canvas.getBoundingClientRect()
 
   const { x, y } = model.cursorPosition
-  const newPoint: SizedPoint = {
-    x: (x - bounds.left) / bounds.width,
-    y: (y - bounds.top) / bounds.height,
-    size: Math.random() * 0.75 + 0.25,
-  }
+  const newPointX = (x - bounds.left) / bounds.width
+  const newPointY = (y - bounds.top) / bounds.height
 
   let lastPath = model.ketchupPaths.at(-1)
   if (!lastPath) {
-    lastPath = []
-    model.ketchupPaths.push(lastPath)
+    return
   }
 
-  const lastPoint = lastPath.at(-1)
-  const minimumDistThreshold = 0.00125
-  if (lastPoint) {
-    const distX = Math.abs(newPoint.x - lastPoint.x)
-    const distY = Math.abs(newPoint.y - lastPoint.y)
-    if (distX < minimumDistThreshold || distY < minimumDistThreshold) {
-      lastPoint.x = newPoint.x
-      lastPoint.y = newPoint.y
-      lastPoint.size += Math.random() / 10
+  let samePoint = false
+
+  let c = 0
+  for (let i = lastPath.length - 1; i > 0; i--) {
+    c++
+    const previousPoint = lastPath[i]
+    const minimumDistThreshold = c * 0.00125 // 0.0003125
+
+    const distX = Math.abs(newPointX - previousPoint.x)
+    const distY = Math.abs(newPointY - previousPoint.y)
+    if (distX < minimumDistThreshold && distY < minimumDistThreshold) {
+      previousPoint.extra += Math.random() / 15 / c
+
+      if (c === 1) {
+        samePoint = true
+      }
+    }
+  }
+
+  if (samePoint) {
+    return
+  }
+
+  const lastSize = lastPath.at(-1)?.base || Math.random() * 0.5 + 0.5
+  const minorNegativeSkew = (Math.random() - 0.525) / 10
+  const newBase = lastSize + minorNegativeSkew
+
+  // We get the drizzle to taper off
+  if (newBase < 0.25) {
+    const toss = Math.random()
+
+    if (toss < 0.05) {
+      model.squeezeDone = true
+    }
+
+    if (toss > 0.5) {
       return
     }
+  }
+
+  if (newBase < 0.2) {
+    return
+  }
+
+  const newPoint: Splat = {
+    x: newPointX,
+    y: newPointY,
+    base: newBase,
+    extra: 0,
   }
 
   lastPath.push(newPoint)
@@ -336,18 +381,24 @@ function update(msg: Msg, model: Model): Change<Msg, Model> {
         return [model]
       }
 
+      const currentTick = Date.now()
+      const delta = currentTick - model.lastTick
+      if (delta < 10) {
+        return [model]
+      }
+
       const r = setUpCanvas(model)
       if (!r) {
         return [model]
       }
       const [canvas, size] = r
 
-      if (model.drawing) {
-        updatePaths(model)
+      if (model.drawing && !model.squeezeDone) {
+        updatePaths(model, delta)
       }
 
       drawScene(model, canvas, size)
-      return [model]
+      return [{ ...model, lastTick: currentTick }]
     }
     case 'mouse_move': {
       const { x, y } = msg
@@ -356,10 +407,17 @@ function update(msg: Msg, model: Model): Change<Msg, Model> {
     case 'mouse_down': {
       const { x, y } = msg
       model.ketchupPaths.push([])
-      return [{ ...model, drawing: true, cursorPosition: { x, y } }]
+      return [
+        {
+          ...model,
+          drawing: true,
+          squeezeDone: false,
+          cursorPosition: { x, y },
+        },
+      ]
     }
     case 'mouse_up': {
-      return [{ ...model, drawing: false }]
+      return [{ ...model, drawing: false, squeezeDone: true }]
     }
     case 'reset': {
       return [{ ...model, dishId: crypto.randomUUID(), ketchupPaths: [] }]
@@ -491,6 +549,7 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
             alt=""
             id="spray"
             src="./spray.png"
+            className={model.squeezeDone ? 'spray-squeeze-exit' : undefined}
             style={{
               // We flip the spray back and forth to flow of ketchup
               transform:

@@ -146,8 +146,22 @@ body {
 
 #spray {
   display: block;
-  max-width: 15%;
+  width: 15%;
   margin: 0px auto;
+}
+
+@keyframes trickle {
+  0% {
+    width: 15%;
+  }
+
+  100% {
+    width: 1%;
+  }
+}
+
+.spray-squeeze-exit {
+  animation: trickle 0.3s ease-in forwards;
 }
 
 #canvas {
