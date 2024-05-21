@@ -168,8 +168,6 @@ function drawScene(model: Model, canvas: HTMLCanvasElement, size: number) {
   ctx.strokeStyle = '#FB5A59'
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
-  const chunkCount = 2
-  const lineWidthScalar = 1.5
 
   for (let s = 0; s < model.ketchupPaths.length; s++) {
     const relativeSegment = model.ketchupPaths[s]
@@ -181,6 +179,8 @@ function drawScene(model: Model, canvas: HTMLCanvasElement, size: number) {
       })
     )
 
+    // Since it's ellipsis, we smooth out larger vertical changes with another point
+    let previousPoint
     for (const point of segment) {
       ctx.beginPath()
       ctx.ellipse(
@@ -193,6 +193,21 @@ function drawScene(model: Model, canvas: HTMLCanvasElement, size: number) {
         2 * Math.PI
       )
       ctx.fill()
+
+      if (previousPoint) {
+        const verticalMove = Math.abs(point.y - previousPoint.y) > 0.01
+        if (verticalMove) {
+          const midX = (point.x + previousPoint.x) / 2
+          const midY = (point.y + previousPoint.y) / 2
+          const midSize = (point.size + previousPoint.size) / 2
+
+          ctx.beginPath()
+          ctx.ellipse(midX, midY, midSize, midSize * 0.4, 0, 0, 2 * Math.PI)
+          ctx.fill()
+        }
+      }
+
+      previousPoint = point
     }
 
     // const firstPoint = segment[0]
@@ -314,9 +329,16 @@ function updatePaths(model: Model, delta: number) {
     return
   }
 
-  const lastSize = lastPath.at(-1)?.base || Math.random() * 0.5 + 0.5
+  const lastPointBase = lastPath.at(-1)?.base
+  const initialBase = lastPointBase || Math.random() * 0.4 + 0.6
+
+  // Some amount of negative skew to trend towards running out of ketchup
   const minorNegativeSkew = (Math.random() - 0.525) / 10
-  const newBase = lastSize + minorNegativeSkew
+
+  // Some negative skew to trend towards finishing squeezes that may be going long
+  // const durationNegativeSkew = -(lastPath.length * 0.00005)
+
+  const newBase = initialBase + minorNegativeSkew // + durationNegativeSkew
 
   // We get the drizzle to taper off
   if (newBase < 0.25) {
@@ -450,35 +472,39 @@ function update(msg: Msg, model: Model): Change<Msg, Model> {
 function view(model: Model, dispatch: Dispatch<Msg>) {
   ;(window as any).$model = model
 
-  let title
-  let footerText
-  switch (model.scene) {
-    case 'about':
-      title = 'About Maid Cafe Omurice Simulator'
-      footerText = (
-        <button onClick={() => dispatch({ type: 'return_home' })}>
-          Back to game
-        </button>
-      )
-      break
-    case 'game':
-      title = `Match ${model.score + 1}`
-      footerText = `${((1 - model.wallProgress) * 100).toFixed(0)}%`
-      break
-    case 'game-over':
-      title = (
-        <span onClick={() => dispatch({ type: 'return_home' })}>Game Over</span>
-      )
-      footerText = `Final score: ${model.score}`
-      break
-    case 'home':
-      title = 'Maid Cafe Omurice Simulator'
-      footerText = (
-        <button onClick={() => dispatch({ type: 'open_about' })}>
-          What's this?
-        </button>
-      )
-      break
+  if (model.scene === 'about') {
+    return (
+      <div className="about-napkin">
+        <div className="about">
+          <div className="about-content">
+            <h1>What's this about?</h1>
+            <p>
+              Japanese maid cafes have a staple dish <i>omurice</i>. The maids
+              will often draw cute pictures on omurice using ketchup.
+            </p>
+            <p>
+              Omurice drawing is a fun medium of creative expression. This
+              simulator captures some of that magic.
+            </p>
+            <p>
+              Draw a person, place, thing, or message in ketchup and share it
+              with those dear to you.
+            </p>
+
+            <p>
+              Made by <a href="https://jew.ski">Chris Andrejewski</a>
+            </p>
+          </div>
+
+          <button
+            className="about-button"
+            onClick={() => dispatch({ type: 'return_home' })}
+          >
+            Return to drawing
+          </button>
+        </div>
+      </div>
+    )
   }
 
   const bottleElement = model.bottleRef.current
@@ -498,10 +524,15 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
       }
     >
       <div className="header">
-        <h1>{title}</h1>
-      </div>
-      <div className="footer">
-        <h1>{footerText}</h1>
+        <h1>
+          <button
+            onClick={() => {
+              dispatch({ type: 'open_about' })
+            }}
+          >
+            Maid Cafe Omurice Simulator
+          </button>
+        </h1>
       </div>
 
       <div
@@ -522,13 +553,7 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
           })
         }}
       >
-        <canvas
-          id="canvas"
-          style={{
-            opacity: model.scene === 'about' ? 0.1 : undefined,
-          }}
-          ref={model.wheelCanvas}
-        />
+        <canvas id="canvas" ref={model.wheelCanvas} />
       </div>
 
       <div className="button-set">
@@ -558,20 +583,6 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
           />
         )}
       </div>
-
-      {model.scene === 'about' && (
-        <div className="about">
-          <p>
-            Omurice is a Japanese dish that allows one's true creative to be
-            expressed before it is eaten. Draw your favorite person, place, or
-            thing in ketchup and take the photo home with you.
-          </p>
-
-          <p>
-            Made by <a href="https://jew.ski">Chris Andrejewski</a>
-          </p>
-        </div>
-      )}
     </div>
   )
 }
