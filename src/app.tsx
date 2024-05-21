@@ -11,7 +11,7 @@ type Splat = Point & { base: number; extra: number }
 type SizedPoint = Point & { size: number }
 
 type Model = {
-  scene: 'home' | 'about' | 'game' | 'game-over'
+  scene: 'home' | 'about' | 'game'
   score: number
   windowSize: Size
   wheelCanvas: React.RefObject<HTMLCanvasElement>
@@ -19,10 +19,6 @@ type Model = {
   wheelColor: string
   wheelRotation: number
   levelStart: number
-
-  previousWallColor: Rgb
-  wallProgress: number
-  nextWallColor: Rgb
 
   ketchupPaths: Splat[][]
   cursorPosition: Point
@@ -56,11 +52,6 @@ const init: Change<Msg, Model> = [
     wheelColor: '#000000',
     wheelRotation: 0,
     levelStart: 0,
-
-    previousWallColor: defaultColor,
-    nextWallColor: defaultColor,
-    wallProgress: 0,
-
     ketchupPaths: [],
     cursorPosition: { x: 0, y: 0 },
     drawing: false,
@@ -376,7 +367,6 @@ function update(msg: Msg, model: Model): Change<Msg, Model> {
           scene: 'game',
           score: 0,
           levelStart: Date.now(),
-          wallProgress: 0,
         },
       ]
     }
@@ -399,7 +389,7 @@ function update(msg: Msg, model: Model): Change<Msg, Model> {
       return [newModel]
     }
     case 'draw_tick': {
-      if (model.scene !== 'home') {
+      if (model.scene !== 'game') {
         return [model]
       }
 
@@ -472,39 +462,13 @@ function update(msg: Msg, model: Model): Change<Msg, Model> {
 function view(model: Model, dispatch: Dispatch<Msg>) {
   ;(window as any).$model = model
 
-  if (model.scene === 'about') {
-    return (
-      <div className="about-napkin">
-        <div className="about">
-          <div className="about-content">
-            <h1>What's this about?</h1>
-            <p>
-              Japanese maid cafes have a staple dish <i>omurice</i>. The maids
-              will often draw cute pictures on omurice using ketchup.
-            </p>
-            <p>
-              Omurice drawing is a fun medium of creative expression. This
-              simulator captures some of that magic.
-            </p>
-            <p>
-              Draw a person, place, thing, or message in ketchup and share it
-              with those dear to you.
-            </p>
-
-            <p>
-              Made by <a href="https://jew.ski">Chris Andrejewski</a>
-            </p>
-          </div>
-
-          <button
-            className="about-button"
-            onClick={() => dispatch({ type: 'return_home' })}
-          >
-            Return to drawing
-          </button>
-        </div>
-      </div>
-    )
+  switch (model.scene) {
+    case 'home':
+      return homeView(model, dispatch)
+    case 'about':
+      return aboutView(model, dispatch)
+    case 'game':
+      break
   }
 
   const bottleElement = model.bottleRef.current
@@ -524,15 +488,7 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
       }
     >
       <div className="header">
-        <h1>
-          <button
-            onClick={() => {
-              dispatch({ type: 'open_about' })
-            }}
-          >
-            Maid Cafe Omurice Simulator
-          </button>
-        </h1>
+        <h1>Maid Cafe Omurice Simulator</h1>
       </div>
 
       <div
@@ -556,7 +512,7 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
         <canvas id="canvas" ref={model.wheelCanvas} />
       </div>
 
-      <div className="button-set">
+      <div className="button-set" style={{ padding: '2rem' }}>
         <button onClick={() => dispatch({ type: 'reset' })}>Another one</button>
         <button onClick={() => dispatch({ type: 'download' })}>Download</button>
       </div>
@@ -583,6 +539,72 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
           />
         )}
       </div>
+    </div>
+  )
+}
+
+function homeView(model: Model, dispatch: Dispatch<Msg>) {
+  return (
+    <div className="home">
+      <h1>Maid Cafe Omurice Simulator</h1>
+
+      <div className="button-set">
+        <button onClick={() => dispatch({ type: 'start_game' })}>
+          Start drawing
+        </button>
+        <button onClick={() => dispatch({ type: 'open_about' })}>
+          What's this?
+        </button>
+      </div>
+
+      <img alt="" id="home-bottle" src="./bottle.png" />
+    </div>
+  )
+}
+
+function aboutView(model: Model, dispatch: Dispatch<Msg>) {
+  return (
+    <div className="about-napkin">
+      <div className="about">
+        <div className="about-content">
+          <h1>What's this about?</h1>
+          <p>
+            Japanese maid cafes have a staple dish <i>omurice</i>. The maids
+            will often draw cute pictures on omurice using ketchup.
+          </p>
+          <p>
+            Omurice drawing is a fun medium of creative expression. This
+            simulator captures some of that magic.
+          </p>
+          <p>
+            Draw a person, place, thing, or message in ketchup and share it with
+            those dear to you.
+          </p>
+
+          <p>
+            Made by <a href="https://jew.ski">Chris Andrejewski</a>
+          </p>
+        </div>
+
+        <button
+          className="about-button"
+          onClick={() => dispatch({ type: 'return_home' })}
+        >
+          Return to home
+        </button>
+      </div>
+
+      <img
+        alt=""
+        id="home-bottle"
+        style={{
+          opacity: '0.4',
+          zIndex: -100,
+          zoom: '0.4',
+          right: '15vmax',
+        }}
+        src="./bottle.png"
+      />
     </div>
   )
 }

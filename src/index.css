@@ -9,6 +9,58 @@ body {
   overflow: hidden;
 }
 
+.home {
+  padding: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 2vmax;
+}
+
+.home h1 {
+  font-size: 4vmax;
+  text-align: center;
+}
+
+@keyframes hover {
+  0% {
+    bottom: -40vmin;
+  }
+
+  10% {
+    transform: rotate(185deg);
+  }
+
+  50% {
+    bottom: -50vmin;
+  }
+
+  30% {
+    transform: rotate(170deg);
+  }
+
+  60% {
+    transform: rotate(190deg);
+  }
+
+  90% {
+    transform: rotate(180deg);
+  }
+
+  100% {
+    bottom: -40vmin;
+  }
+}
+
+#home-bottle {
+  position: fixed;
+  bottom: -40vmin;
+  transform: rotate(180deg);
+  width: 40vmin;
+  animation: hover infinite 1s ease-in-out;
+}
+
 .app {
   position: fixed;
   top: 0;
@@ -53,7 +105,6 @@ body {
 }
 
 .about-napkin {
-  background-color: #fffdf8;
   font-size: 2vmax;
 }
 
@@ -175,7 +226,6 @@ body {
   align-items: center;
   justify-content: center;
   gap: 2vmax;
-  margin: 2rem;
 }
 
 .button-set button {
