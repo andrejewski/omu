@@ -74,6 +74,22 @@ body {
   flex-direction: column;
 }
 
+.app.landscape {
+  flex-direction: row;
+}
+
+.app.landscape .header {
+  display: none;
+}
+
+.app.landscape .footer {
+  display: none;
+}
+
+.app.landscape .toolbar {
+  display: block;
+}
+
 .header {
   padding: 0 1rem;
   text-align: center;
@@ -102,6 +118,47 @@ body {
 
 .header h1 button:hover {
   border-bottom: 2px dotted #000;
+}
+
+.toolbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+}
+
+.toolbar-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toolbar-bar h1 {
+  font-size: inherit;
+  padding: 2vmin;
+  margin: 0;
+}
+
+.toolbar-buttons {
+  display: flex;
+  align-items: center;
+  justify-items: center;
+}
+
+.toolbar-buttons button {
+  background-color: transparent;
+  border: none;
+  font-size: inherit;
+  color: inherit;
+  text-decoration: underline;
+  padding: 2vmin;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.toolbar-buttons button:first-child {
+  border-right: 1px solid #ddd;
 }
 
 .about-napkin {

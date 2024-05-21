@@ -26,6 +26,8 @@ type Model = {
   dishId: string
   lastTick: number
   squeezeDone: boolean
+
+  touch: boolean
 }
 
 type Msg =
@@ -39,8 +41,6 @@ type Msg =
   | { type: 'return_home' }
   | { type: 'draw_tick'; delta: number }
   | { type: 'window_size'; size: Size }
-
-const defaultColor: Rgb = [255, 255, 255]
 
 const init: Change<Msg, Model> = [
   {
@@ -58,6 +58,7 @@ const init: Change<Msg, Model> = [
     dishId: crypto.randomUUID(),
     lastTick: 0,
     squeezeDone: false,
+    touch: 'ontouchstart' in window,
   },
 ]
 
@@ -70,10 +71,11 @@ function setUpCanvas(model: Model): [HTMLCanvasElement, number] | undefined {
 
   const { width, height } = model.windowSize
   const minSize = Math.min(width, height)
+  const screenCanvasMargin = 0.05
+  const canvasSize = minSize * (1 - screenCanvasMargin)
+
   const xSize = Math.floor(
-    width < height
-      ? Math.min(minSize * 0.75, height)
-      : Math.min(minSize * 0.75, width)
+    width < height ? Math.min(canvasSize, height) : Math.min(canvasSize, width)
   )
 
   if (canvas.width === xSize * 2) {
@@ -278,8 +280,6 @@ function drawScene(model: Model, canvas: HTMLCanvasElement, size: number) {
   // }
 }
 
-type Rgb = readonly [number, number, number]
-
 function updatePaths(model: Model, delta: number) {
   const canvas = model.wheelCanvas.current
   if (!canvas) {
@@ -482,39 +482,109 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
 
   return (
     <div
-      className="app"
-      onMouseMove={(e) =>
-        dispatch({ type: 'mouse_move', x: e.clientX, y: e.clientY })
-      }
+      className="app landscape"
+      {...(model.touch
+        ? {
+            onTouchMove(e) {
+              const firstTouch = e.changedTouches.item(0)
+              if (!firstTouch) {
+                return
+              }
+
+              dispatch({
+                type: 'mouse_move',
+                x: firstTouch.clientX,
+                y: firstTouch.clientY,
+              })
+            },
+          }
+        : {
+            onMouseMove(e) {
+              dispatch({ type: 'mouse_move', x: e.clientX, y: e.clientY })
+            },
+          })}
     >
       <div className="header">
         <h1>Maid Cafe Omurice Simulator</h1>
       </div>
 
+      <div className="toolbar">
+        <div className="toolbar-bar">
+          <h1>
+            Maid Cafe
+            <wbr /> Omurice
+            <wbr /> Simulator
+          </h1>
+          <div className="toolbar-buttons">
+            <button onClick={() => dispatch({ type: 'reset' })}>
+              Another one
+            </button>
+            <button onClick={() => dispatch({ type: 'download' })}>
+              Download
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div
         key={model.dishId}
         className="main-area"
-        onMouseDown={(e) => {
-          dispatch({
-            type: 'mouse_down',
-            x: e.clientX,
-            y: e.clientY,
-          })
-        }}
-        onMouseUp={(e) => {
-          dispatch({
-            type: 'mouse_up',
-            x: e.clientX,
-            y: e.clientY,
-          })
-        }}
+        {...(model.touch
+          ? {
+              onTouchStart(e) {
+                const firstTouch = e.changedTouches.item(0)
+                if (!firstTouch) {
+                  return
+                }
+
+                dispatch({
+                  type: 'mouse_down',
+                  x: firstTouch.clientX,
+                  y: firstTouch.clientY,
+                })
+              },
+              onTouchEnd(e) {
+                const firstTouch = e.changedTouches.item(0)
+                if (!firstTouch) {
+                  return
+                }
+
+                dispatch({
+                  type: 'mouse_up',
+                  x: firstTouch.clientX,
+                  y: firstTouch.clientY,
+                })
+              },
+            }
+          : {
+              onMouseDown(e) {
+                dispatch({
+                  type: 'mouse_down',
+                  x: e.clientX,
+                  y: e.clientY,
+                })
+              },
+              onMouseUp(e) {
+                dispatch({
+                  type: 'mouse_up',
+                  x: e.clientX,
+                  y: e.clientY,
+                })
+              },
+            })}
       >
         <canvas id="canvas" ref={model.wheelCanvas} />
       </div>
 
-      <div className="button-set" style={{ padding: '2rem' }}>
-        <button onClick={() => dispatch({ type: 'reset' })}>Another one</button>
-        <button onClick={() => dispatch({ type: 'download' })}>Download</button>
+      <div className="footer">
+        <div className="button-set" style={{ padding: '2rem' }}>
+          <button onClick={() => dispatch({ type: 'reset' })}>
+            Another one
+          </button>
+          <button onClick={() => dispatch({ type: 'download' })}>
+            Download
+          </button>
+        </div>
       </div>
 
       <div
