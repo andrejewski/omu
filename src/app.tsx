@@ -308,11 +308,17 @@ function updatePaths(model: Model, delta: number) {
     const distX = Math.abs(newPointX - previousPoint.x)
     const distY = Math.abs(newPointY - previousPoint.y)
     if (distX < minimumDistThreshold && distY < minimumDistThreshold) {
-      previousPoint.extra += Math.random() / 15 / c
-
+      const newExtra = Math.random() / 15 / c
       if (c === 1) {
         samePoint = true
+        if (previousPoint.extra > previousPoint.base) {
+          previousPoint.extra +=
+            newExtra / previousPoint.extra / previousPoint.base / 2
+          continue
+        }
       }
+
+      previousPoint.extra += newExtra
     }
   }
 
