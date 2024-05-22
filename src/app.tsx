@@ -57,7 +57,7 @@ const init: Change<Msg, Model> = [
     drawing: false,
     dishId: crypto.randomUUID(),
     lastTick: 0,
-    squeezeDone: false,
+    squeezeDone: true,
     touch: 'ontouchstart' in window,
   },
 ]
@@ -509,6 +509,49 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
               dispatch({ type: 'mouse_move', x: e.clientX, y: e.clientY })
             },
           })}
+      {...(model.touch
+        ? {
+            onTouchStart(e) {
+              const firstTouch = e.changedTouches.item(0)
+              if (!firstTouch) {
+                return
+              }
+
+              dispatch({
+                type: 'mouse_down',
+                x: firstTouch.clientX,
+                y: firstTouch.clientY,
+              })
+            },
+            onTouchEnd(e) {
+              const firstTouch = e.changedTouches.item(0)
+              if (!firstTouch) {
+                return
+              }
+
+              dispatch({
+                type: 'mouse_up',
+                x: firstTouch.clientX,
+                y: firstTouch.clientY,
+              })
+            },
+          }
+        : {
+            onMouseDown(e) {
+              dispatch({
+                type: 'mouse_down',
+                x: e.clientX,
+                y: e.clientY,
+              })
+            },
+            onMouseUp(e) {
+              dispatch({
+                type: 'mouse_up',
+                x: e.clientX,
+                y: e.clientY,
+              })
+            },
+          })}
     >
       <div className="header">
         <h1>Maid Cafe Omurice Simulator</h1>
@@ -532,53 +575,7 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
         </div>
       </div>
 
-      <div
-        key={model.dishId}
-        className="main-area"
-        {...(model.touch
-          ? {
-              onTouchStart(e) {
-                const firstTouch = e.changedTouches.item(0)
-                if (!firstTouch) {
-                  return
-                }
-
-                dispatch({
-                  type: 'mouse_down',
-                  x: firstTouch.clientX,
-                  y: firstTouch.clientY,
-                })
-              },
-              onTouchEnd(e) {
-                const firstTouch = e.changedTouches.item(0)
-                if (!firstTouch) {
-                  return
-                }
-
-                dispatch({
-                  type: 'mouse_up',
-                  x: firstTouch.clientX,
-                  y: firstTouch.clientY,
-                })
-              },
-            }
-          : {
-              onMouseDown(e) {
-                dispatch({
-                  type: 'mouse_down',
-                  x: e.clientX,
-                  y: e.clientY,
-                })
-              },
-              onMouseUp(e) {
-                dispatch({
-                  type: 'mouse_up',
-                  x: e.clientX,
-                  y: e.clientY,
-                })
-              },
-            })}
-      >
+      <div key={model.dishId} className="main-area">
         <canvas id="canvas" ref={model.wheelCanvas} />
       </div>
 
@@ -601,19 +598,38 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
         }}
       >
         <img alt="" id="bottle" src={'./bottle.png'} ref={model.bottleRef} />
-        {model.drawing && (
+        <div className="spray-bottom">
+          <div
+            className="spray-shadow"
+            style={{ opacity: model.drawing ? 0 : undefined }}
+          />
           <img
             alt=""
-            id="spray"
+            className="spray-ghost"
             src="./spray.png"
-            className={model.squeezeDone ? 'spray-squeeze-exit' : undefined}
             style={{
-              // We flip the spray back and forth to flow of ketchup
-              transform:
-                (Date.now() / 100) % 2 > 1 ? 'scale(-1, 1)' : undefined,
+              visibility: 'hidden',
             }}
           />
-        )}
+          <img
+            alt=""
+            src="./spray.png"
+            className={
+              model.squeezeDone
+                ? 'spray-sauce spray-squeeze-exit'
+                : 'spray-sauce'
+            }
+            style={{
+              position: 'absolute',
+              top: 0,
+              // We flip the spray back and forth to flow of ketchup
+              transform:
+                model.drawing && (Date.now() / 100) % 2 > 1
+                  ? 'scale(-1, 1)'
+                  : undefined,
+            }}
+          />
+        </div>
       </div>
     </div>
   )

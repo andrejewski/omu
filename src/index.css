@@ -220,6 +220,7 @@ body {
   width: 18vmin;
   cursor: none;
   font-size: 0;
+  user-select: none;
 }
 
 #bottle {
@@ -227,10 +228,16 @@ body {
   width: 100%;
 }
 
-#spray {
+.spray-ghost {
   display: block;
   width: 15%;
   margin: 0px auto;
+  visibility: hidden;
+}
+
+.spray-sauce {
+  display: block;
+  width: 15%;
 }
 
 @keyframes trickle {
@@ -245,6 +252,24 @@ body {
 
 .spray-squeeze-exit {
   animation: trickle 0.3s ease-in forwards;
+}
+
+.spray-bottom {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.spray-shadow {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  margin-left: -0.5vmin;
+  margin-bottom: -0.375vmin;
+  background-color: rgba(0, 0, 0, 0.2);
+  width: 1vmin;
+  height: 0.5vmin;
+  border-radius: 50%;
 }
 
 #canvas {
