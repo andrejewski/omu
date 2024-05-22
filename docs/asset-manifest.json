@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "https://jew.ski/maid-cafe-omurice-simulator/static/css/main.a8d02220.css",
-    "main.js": "https://jew.ski/maid-cafe-omurice-simulator/static/js/main.c9be8e1c.js",
-    "index.html": "https://jew.ski/maid-cafe-omurice-simulator/index.html",
-    "main.a8d02220.css.map": "https://jew.ski/maid-cafe-omurice-simulator/static/css/main.a8d02220.css.map",
-    "main.c9be8e1c.js.map": "https://jew.ski/maid-cafe-omurice-simulator/static/js/main.c9be8e1c.js.map"
+    "main.css": "https://jew.ski/omu/static/css/main.00f974dd.css",
+    "main.js": "https://jew.ski/omu/static/js/main.292bdda0.js",
+    "index.html": "https://jew.ski/omu/index.html",
+    "main.00f974dd.css.map": "https://jew.ski/omu/static/css/main.00f974dd.css.map",
+    "main.292bdda0.js.map": "https://jew.ski/omu/static/js/main.292bdda0.js.map"
   },
   "entrypoints": [
-    "static/css/main.a8d02220.css",
-    "static/js/main.c9be8e1c.js"
+    "static/css/main.00f974dd.css",
+    "static/js/main.292bdda0.js"
   ]
 }
