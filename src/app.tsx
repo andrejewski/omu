@@ -12,21 +12,15 @@ type SizedPoint = Point & { size: number }
 
 type Model = {
   scene: 'home' | 'about' | 'game'
-  score: number
   windowSize: Size
-  wheelCanvas: React.RefObject<HTMLCanvasElement>
-  bottleRef: React.RefObject<HTMLImageElement>
-  wheelColor: string
-  wheelRotation: number
-  levelStart: number
-
+  drawCanvas: React.RefObject<HTMLCanvasElement>
+  cursorRef: React.RefObject<HTMLImageElement>
   ketchupPaths: Splat[][]
   cursorPosition: Point
   drawing: boolean
   dishId: string
   lastTick: number
   squeezeDone: boolean
-
   touch: boolean
 }
 
@@ -45,13 +39,9 @@ type Msg =
 const init: Change<Msg, Model> = [
   {
     scene: 'home',
-    score: 0,
     windowSize: { width: 0, height: 0 },
-    wheelCanvas: React.createRef(),
-    bottleRef: React.createRef(),
-    wheelColor: '#000000',
-    wheelRotation: 0,
-    levelStart: 0,
+    drawCanvas: React.createRef(),
+    cursorRef: React.createRef(),
     ketchupPaths: [],
     cursorPosition: { x: 0, y: 0 },
     drawing: false,
@@ -63,8 +53,8 @@ const init: Change<Msg, Model> = [
 ]
 
 function setUpCanvas(model: Model): [HTMLCanvasElement, number] | undefined {
-  const { wheelCanvas } = model
-  const canvas = wheelCanvas.current
+  const { drawCanvas } = model
+  const canvas = drawCanvas.current
   if (!canvas) {
     return
   }
@@ -87,7 +77,7 @@ function setUpCanvas(model: Model): [HTMLCanvasElement, number] | undefined {
 }
 
 function drawScene(model: Model, canvas: HTMLCanvasElement, size: number) {
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  const ctx = canvas.getContext('2d')
   if (!ctx) {
     return
   }
@@ -202,86 +192,11 @@ function drawScene(model: Model, canvas: HTMLCanvasElement, size: number) {
 
       previousPoint = point
     }
-
-    // const firstPoint = segment[0]
-    // if (!firstPoint) {
-    //   continue
-    // }
-
-    // ctx.beginPath()
-    // ctx.ellipse(
-    //   firstPoint.x,
-    //   firstPoint.y,
-    //   firstPoint.size,
-    //   firstPoint.size * 0.4,
-    //   0,
-    //   0,
-    //   2 * Math.PI
-    // )
-    // ctx.fill()
-
-    // if (segment.length <= 2) {
-    //   continue
-    // }
-
-    // let lastSize = firstPoint.size
-
-    // ctx.beginPath()
-    // ctx.moveTo(firstPoint.x, firstPoint.y)
-    // let i = 1
-    // let c = 1
-    // for (; i < segment.length - 2; i++) {
-    //   c++
-    //   const point = segment[i]!
-    //   const nextPoint = segment[i + 1]!
-
-    //   const midX = (point.x + nextPoint.x) / 2
-    //   const midY = (point.y + nextPoint.y) / 2
-
-    //   ctx.quadraticCurveTo(point.x, point.y, midX, midY)
-
-    //   ctx.lineWidth = lineWidthScalar * (point.size + lastSize / 2)
-    //   ctx.stroke()
-    //   ctx.closePath()
-    //   ctx.beginPath()
-
-    //   lastSize = point.size
-    // }
-
-    // const secondToLastPoint = segment[i]!
-    // const lastPoint = segment[i + 1]!
-    // ctx.quadraticCurveTo(
-    //   secondToLastPoint.x,
-    //   secondToLastPoint.y,
-    //   lastPoint.x,
-    //   lastPoint.y
-    // )
-    // ctx.lineWidth = lineWidthScalar * (lastSize + secondToLastPoint.size / 2)
-    // ctx.stroke()
-
-    // ctx.beginPath()
-    // const radius = lastPoint.size
-    // ctx.ellipse(
-    //   lastPoint.x,
-    //   lastPoint.y,
-    //   radius,
-    //   radius * 0.4,
-    //   0,
-    //   0,
-    //   2 * Math.PI
-    // )
-    // ctx.fill()
   }
-
-  // for (const k of model.ketchupPoints) {
-  //   ctx.beginPath()
-  //   ctx.arc(k.x * size, k.y * size, k.size * (size / 50), 0, 2 * Math.PI)
-  //   ctx.fill()
-  // }
 }
 
 function updatePaths(model: Model, delta: number) {
-  const canvas = model.wheelCanvas.current
+  const canvas = model.drawCanvas.current
   if (!canvas) {
     return
   }
@@ -371,8 +286,6 @@ function update(msg: Msg, model: Model): Change<Msg, Model> {
         {
           ...model,
           scene: 'game',
-          score: 0,
-          levelStart: Date.now(),
         },
       ]
     }
@@ -384,7 +297,7 @@ function update(msg: Msg, model: Model): Change<Msg, Model> {
         {
           ...init[0],
           windowSize: model.windowSize,
-          wheelCanvas: model.wheelCanvas,
+          drawCanvas: model.drawCanvas,
         },
       ]
     }
@@ -441,7 +354,7 @@ function update(msg: Msg, model: Model): Change<Msg, Model> {
       return [{ ...model, dishId: crypto.randomUUID(), ketchupPaths: [] }]
     }
     case 'download': {
-      const canvas = model.wheelCanvas.current
+      const canvas = model.drawCanvas.current
       if (!canvas) {
         return [model]
       }
@@ -477,7 +390,7 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
       break
   }
 
-  const bottleElement = model.bottleRef.current
+  const bottleElement = model.cursorRef.current
   const bottleBounds = bottleElement?.getBoundingClientRect()
 
   const bottleSelfAdjustmentX = bottleBounds ? -(bottleBounds.width / 2) : 0
@@ -488,7 +401,7 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
 
   return (
     <div
-      className="app landscape"
+      className="app"
       {...(model.touch
         ? {
             onTouchMove(e) {
@@ -553,10 +466,6 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
             },
           })}
     >
-      <div className="header">
-        <h1>Maid Cafe Omurice Simulator</h1>
-      </div>
-
       <div className="toolbar">
         <div className="toolbar-bar">
           <h1>
@@ -576,18 +485,7 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
       </div>
 
       <div key={model.dishId} className="main-area">
-        <canvas id="canvas" ref={model.wheelCanvas} />
-      </div>
-
-      <div className="footer">
-        <div className="button-set" style={{ padding: '2rem' }}>
-          <button onClick={() => dispatch({ type: 'reset' })}>
-            Another one
-          </button>
-          <button onClick={() => dispatch({ type: 'download' })}>
-            Download
-          </button>
-        </div>
+        <canvas id="canvas" ref={model.drawCanvas} />
       </div>
 
       <div
@@ -597,7 +495,7 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
           left: `${bottleBottom}px`,
         }}
       >
-        <img alt="" id="bottle" src={'./bottle.png'} ref={model.bottleRef} />
+        <img alt="" id="bottle" src={'./bottle.png'} ref={model.cursorRef} />
         <div className="spray-bottom">
           <div
             className="spray-shadow"

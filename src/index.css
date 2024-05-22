@@ -71,53 +71,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
-}
-
-.app.landscape {
   flex-direction: row;
 }
 
-.app.landscape .header {
-  display: none;
-}
-
-.app.landscape .footer {
-  display: none;
-}
-
-.app.landscape .toolbar {
+.toolbar {
   display: block;
-}
-
-.header {
-  padding: 0 1rem;
-  text-align: center;
-}
-
-.header h1 {
-  margin: 0;
-  padding: 1rem 0;
-  font-size: 3vmax;
-}
-
-.header h1 button {
-  display: block;
-  width: 100%;
-  padding: 0.1em 0;
-  font-family: inherit;
-  font-size: inherit;
-  font-weight: inherit;
-  color: inherit;
-  background: transparent;
-  border: none;
-  text-decoration: none;
-  cursor: help;
-  border-bottom: 2px dotted transparent;
-}
-
-.header h1 button:hover {
-  border-bottom: 2px dotted #000;
 }
 
 .toolbar {
@@ -178,9 +136,6 @@ body {
 
 .about a {
   color: inherit;
-}
-
-.about-content {
 }
 
 .about-button {
