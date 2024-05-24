@@ -70,8 +70,8 @@ export function getContent(locale: Locale): Content {
               人、場所、物、またはメッセージをケチャップで描いて、大切な人とシェアしましょう。
             </p>
             <p>
-              <a href="https://jew.ski">クリス・アンドレジェスキー</a>
-              によって製作されました
+              <a href="https://jew.ski">クリス・アンドレジェスキ</a>
+              によって製作されました。
             </p>
           </>
         ),
