@@ -151,6 +151,39 @@ body {
   color: inherit;
 }
 
+.locale-picker {
+  display: flex;
+  position: fixed;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1vmin;
+  font-size: 0.8em;
+  padding: 0vmin 1vmin;
+}
+
+.locale-picker p {
+  margin: 0;
+}
+
+.locale-picker button {
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: bold;
+  text-transform: uppercase;
+  padding: 1vmin 0.5vmin;
+  cursor: pointer;
+}
+
+.locale-picker button:hover,
+.locale-picker button.active {
+  text-decoration: underline;
+}
+
 .about-button {
   display: block;
   border: none;

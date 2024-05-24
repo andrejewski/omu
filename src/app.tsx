@@ -5,6 +5,7 @@ import {
   mapSubscription,
   withSubscriptions,
 } from 'raj-ts/lib/subscription'
+import { Content, Locale, getContent } from './content'
 
 type Point = { x: number; y: number }
 type Splat = Point & { base: number; extra: number }
@@ -22,6 +23,8 @@ type Model = {
   lastTick: number
   squeezeDone: boolean
   touch: boolean
+  locale: Locale
+  content: Content
 }
 
 type Msg =
@@ -35,7 +38,16 @@ type Msg =
   | { type: 'return_home' }
   | { type: 'draw_tick'; delta: number }
   | { type: 'window_size'; size: Size }
+  | { type: 'locale_change'; locale: Locale }
 
+function parseLocale(language: string): Locale {
+  return language.startsWith('ja') ? 'ja-JP' : 'en-US'
+}
+
+const initialLocale = parseLocale(
+  window.localStorage.getItem('locale') || navigator.language
+)
+const initialContent = getContent(initialLocale)
 const init: Change<Msg, Model> = [
   {
     scene: 'home',
@@ -49,8 +61,36 @@ const init: Change<Msg, Model> = [
     lastTick: 0,
     squeezeDone: true,
     touch: 'ontouchstart' in window,
+    locale: initialLocale,
+    content: initialContent,
+  },
+  () => {
+    updatePageInfo(initialContent)
   },
 ]
+
+function updatePageInfo(content: Content) {
+  const { title, description } = content
+  document.title = title
+
+  const metaUpdates = [
+    ['description', description],
+    ['og:title', title],
+    ['twitter:title', title],
+    ['twitter:description', description],
+    [],
+  ] as [string, string][]
+
+  for (const [name, value] of metaUpdates) {
+    document
+      .querySelector(`meta[name="${name}"]`)
+      ?.setAttribute('content', value)
+
+    document
+      .querySelector(`meta[property="${name}"]`)
+      ?.setAttribute('content', value)
+  }
+}
 
 function setUpCanvas(model: Model): [HTMLCanvasElement, number] | undefined {
   const { drawCanvas } = model
@@ -295,7 +335,8 @@ function update(msg: Msg, model: Model): Change<Msg, Model> {
     case 'return_home': {
       return [
         {
-          ...init[0],
+          ...model,
+          scene: 'home',
           windowSize: model.windowSize,
           drawCanvas: model.drawCanvas,
         },
@@ -372,6 +413,16 @@ function update(msg: Msg, model: Model): Change<Msg, Model> {
       }
 
       return [model, downloadEffect]
+    }
+    case 'locale_change': {
+      try {
+        window.localStorage.setItem('locale', msg.locale)
+      } catch {}
+
+      const content = getContent(msg.locale)
+      updatePageInfo(content)
+
+      return [{ ...model, locale: msg.locale, content }]
     }
     default:
       return [model]
@@ -468,17 +519,13 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
     >
       <div className="toolbar">
         <div className="toolbar-bar">
-          <h1>
-            Maid Cafe
-            <wbr /> Omurice
-            <wbr /> Simulator
-          </h1>
+          <h1>{model.content.title}</h1>
           <div className="toolbar-buttons">
             <button onClick={() => dispatch({ type: 'reset' })}>
-              Another one
+              {model.content.anotherOneButton}
             </button>
             <button onClick={() => dispatch({ type: 'download' })}>
-              Download
+              {model.content.downloadButton}
             </button>
           </div>
         </div>
@@ -536,14 +583,31 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
 function homeView(model: Model, dispatch: Dispatch<Msg>) {
   return (
     <div className="home">
-      <h1>Maid Cafe Omurice Simulator</h1>
+      <h1>{model.content.title}</h1>
+
+      <div className="locale-picker">
+        <p>{model.content.selectLanguageButton}</p>
+        {(
+          [
+            ['en-US', 'English'],
+            ['ja-JP', '日本語'],
+          ] as [Locale, string][]
+        ).map(([locale, name]) => (
+          <button
+            className={model.locale === locale ? 'active' : undefined}
+            onClick={() => dispatch({ type: 'locale_change', locale })}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
 
       <div className="button-set">
         <button onClick={() => dispatch({ type: 'start_game' })}>
-          Start drawing
+          {model.content.startGameButton}
         </button>
         <button onClick={() => dispatch({ type: 'open_about' })}>
-          What's this?
+          {model.content.aboutGameButton}
         </button>
       </div>
 
@@ -556,31 +620,13 @@ function aboutView(model: Model, dispatch: Dispatch<Msg>) {
   return (
     <div className="about-napkin">
       <div className="about">
-        <div className="about-content">
-          <h1>What's this about?</h1>
-          <p>
-            Japanese maid cafes have a staple dish <i>omurice</i>. The maids
-            will often draw cute pictures on omurice using ketchup.
-          </p>
-          <p>
-            Omurice drawing is a fun medium of creative expression. This
-            simulator captures some of that magic.
-          </p>
-          <p>
-            Draw a person, place, thing, or message in ketchup and share it with
-            those dear to you.
-          </p>
-
-          <p>
-            Made by <a href="https://jew.ski">Chris Andrejewski</a>
-          </p>
-        </div>
+        <div className="about-content">{model.content.aboutPageContent}</div>
 
         <button
           className="about-button"
           onClick={() => dispatch({ type: 'return_home' })}
         >
-          Return to home
+          {model.content.returnToHomeButton}
         </button>
       </div>
 
