@@ -142,7 +142,7 @@ body {
 
 .about {
   padding: 2rem;
-  max-width: 640px;
+  max-width: 50vmax;
   margin: 0px auto;
 }
 
