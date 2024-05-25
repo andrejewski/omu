@@ -445,7 +445,7 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
   const bottleBounds = bottleElement?.getBoundingClientRect()
 
   const bottleSelfAdjustmentX = bottleBounds ? -(bottleBounds.width / 2) : 0
-  const bottleSelfAdjustmentY = bottleBounds ? -(bottleBounds.height + 20) : 0
+  const bottleSelfAdjustmentY = bottleBounds ? -bottleBounds.height : 0
 
   const bottleTop = model.cursorPosition.y + bottleSelfAdjustmentY
   const bottleBottom = model.cursorPosition.x + bottleSelfAdjustmentX
@@ -541,21 +541,15 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
           top: `${bottleTop}px`,
           left: `${bottleBottom}px`,
         }}
+        ref={model.cursorRef}
       >
-        <img alt="" id="bottle" src={'./bottle.png'} ref={model.cursorRef} />
+        <img alt="" id="bottle" src={'./bottle.png'} />
         <div className="spray-bottom">
           <div
             className="spray-shadow"
             style={{ opacity: model.drawing ? 0 : undefined }}
           />
-          <img
-            alt=""
-            className="spray-ghost"
-            src="./spray.png"
-            style={{
-              visibility: 'hidden',
-            }}
-          />
+          <img alt="" className="spray-ghost" src="./spray.png" />
           <img
             alt=""
             src="./spray.png"
@@ -565,8 +559,6 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
                 : 'spray-sauce'
             }
             style={{
-              position: 'absolute',
-              top: 0,
               // We flip the spray back and forth to flow of ketchup
               transform:
                 model.drawing && (Date.now() / 100) % 2 > 1

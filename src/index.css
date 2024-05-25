@@ -238,6 +238,8 @@ body {
 .spray-sauce {
   display: block;
   width: 15%;
+  position: absolute;
+  top: 0;
 }
 
 @keyframes trickle {
@@ -265,7 +267,7 @@ body {
   bottom: 0;
   left: 50%;
   margin-left: -0.5vmin;
-  margin-bottom: -0.375vmin;
+  margin-bottom: -0.25vmin;
   background-color: rgba(0, 0, 0, 0.2);
   width: 1vmin;
   height: 0.5vmin;
