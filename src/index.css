@@ -6,7 +6,6 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: #fffdf8;
-  overflow: hidden;
 }
 
 @keyframes home-fade-in {
