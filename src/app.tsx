@@ -389,6 +389,8 @@ function updateWithDeferredFullDraw(model: Model): Change<Msg, Model> {
 function update(msg: Msg, model: Model): Change<Msg, Model> {
   switch (msg.type) {
     case 'start_game': {
+      document.body.style.overflow = 'hidden'
+
       return updateWithDeferredFullDraw({
         ...model,
         scene: 'game',
