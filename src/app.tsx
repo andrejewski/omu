@@ -15,6 +15,7 @@ type Model = {
   scene: 'home' | 'about' | 'game'
   windowSize: Size
   drawCanvas: React.RefObject<HTMLCanvasElement>
+  offscreenCanvas: HTMLCanvasElement
   cursorRef: React.RefObject<HTMLImageElement>
   ketchupPaths: Splat[][]
   cursorPosition: Point
@@ -39,6 +40,7 @@ type Msg =
   | { type: 'draw_tick'; delta: number }
   | { type: 'window_size'; size: Size }
   | { type: 'locale_change'; locale: Locale }
+  | { type: 'draw_canvas_mount' }
 
 function parseLocale(language: string): Locale {
   return language.startsWith('ja') ? 'ja-JP' : 'en-US'
@@ -53,6 +55,7 @@ const init: Change<Msg, Model> = [
     scene: 'home',
     windowSize: { width: 0, height: 0 },
     drawCanvas: React.createRef(),
+    offscreenCanvas: document.createElement('canvas'),
     cursorRef: React.createRef(),
     ketchupPaths: [],
     cursorPosition: { x: 0, y: 0 },
@@ -92,51 +95,45 @@ function updatePageInfo(content: Content) {
   }
 }
 
-function setUpCanvas(model: Model): [HTMLCanvasElement, number] | undefined {
-  const { drawCanvas } = model
+function getCanvasPixelWidth(windowSize: Size): number | undefined {
+  const { width, height } = windowSize
+  const minWindowSize = Math.min(width, height)
+
+  const screenCanvasMargin = 0.05
+  const canvasSize = minWindowSize * (1 - screenCanvasMargin)
+
+  return Math.floor(
+    width < height ? Math.min(canvasSize, height) : Math.min(canvasSize, width)
+  )
+}
+
+function setUpCanvas(model: Model, canvasPixelSize: number) {
+  const { drawCanvas, offscreenCanvas } = model
+
+  const canvasDrawSize = canvasPixelSize * 2
+  offscreenCanvas.width = canvasDrawSize
+  offscreenCanvas.height = canvasDrawSize
+
   const canvas = drawCanvas.current
   if (!canvas) {
     return
   }
 
-  const { width, height } = model.windowSize
-  const minSize = Math.min(width, height)
-  const screenCanvasMargin = 0.05
-  const canvasSize = minSize * (1 - screenCanvasMargin)
-
-  const xSize = Math.floor(
-    width < height ? Math.min(canvasSize, height) : Math.min(canvasSize, width)
-  )
-
-  if (canvas.width === xSize * 2) {
-    return [canvas, xSize]
-  }
-
-  drawScene(model, canvas, xSize)
-  return [canvas, xSize]
+  canvas.style.width = `${canvasPixelSize}px`
+  canvas.style.height = `${canvasPixelSize}px`
+  canvas.width = canvasDrawSize
+  canvas.height = canvasDrawSize
 }
 
-function drawScene(model: Model, canvas: HTMLCanvasElement, size: number) {
-  const ctx = canvas.getContext('2d')
-  if (!ctx) {
-    return
-  }
-
-  canvas.style.width = `${size}px`
-  canvas.style.height = `${size}px`
-  size = size * 2
-
-  canvas.width = size
-  canvas.height = size
-
+function drawBaseLayer(ctx: CanvasRenderingContext2D, canvasDrawSize: number) {
   // dish bottom
   ctx.beginPath()
   ctx.fillStyle = 'rgb(222 228 227)'
   ctx.ellipse(
-    size / 2,
-    size / 2 + size * 0.05,
-    size / 2.5,
-    size / 4.5,
+    canvasDrawSize / 2,
+    canvasDrawSize / 2 + canvasDrawSize * 0.05,
+    canvasDrawSize / 2.5,
+    canvasDrawSize / 4.5,
     0,
     0,
     2 * Math.PI
@@ -146,23 +143,39 @@ function drawScene(model: Model, canvas: HTMLCanvasElement, size: number) {
   // dish top
   ctx.beginPath()
   ctx.fillStyle = 'rgb(234 240 239)'
-  ctx.ellipse(size / 2, size / 2, size / 2, size / 4, 0, 0, 2 * Math.PI)
+  ctx.ellipse(
+    canvasDrawSize / 2,
+    canvasDrawSize / 2,
+    canvasDrawSize / 2,
+    canvasDrawSize / 4,
+    0,
+    0,
+    2 * Math.PI
+  )
   ctx.fill()
 
   // dish hole
   ctx.beginPath()
   ctx.fillStyle = 'rgb(232 236 235)'
-  ctx.ellipse(size / 2, size / 2, size / 2.2, size / 4.2, 0, 0, 2 * Math.PI)
+  ctx.ellipse(
+    canvasDrawSize / 2,
+    canvasDrawSize / 2,
+    canvasDrawSize / 2.2,
+    canvasDrawSize / 4.2,
+    0,
+    0,
+    2 * Math.PI
+  )
   ctx.fill()
 
   // rice base
   ctx.beginPath()
   ctx.fillStyle = '#f68c39'
   ctx.ellipse(
-    size / 2,
-    size / 2 - size * 0.02,
-    size / 2.2,
-    size / 5,
+    canvasDrawSize / 2,
+    canvasDrawSize / 2 - canvasDrawSize * 0.02,
+    canvasDrawSize / 2.2,
+    canvasDrawSize / 5,
     0,
     0,
     2 * Math.PI
@@ -173,17 +186,23 @@ function drawScene(model: Model, canvas: HTMLCanvasElement, size: number) {
   ctx.beginPath()
   ctx.fillStyle = '#efca57'
   ctx.ellipse(
-    size / 2,
-    size / 2 - size * 0.05,
-    size / 2.2,
-    size / 5.5,
+    canvasDrawSize / 2,
+    canvasDrawSize / 2 - canvasDrawSize * 0.05,
+    canvasDrawSize / 2.2,
+    canvasDrawSize / 5.5,
     0,
     0,
     2 * Math.PI
   )
   ctx.fill()
+}
 
-  if (!model.ketchupPaths.length) {
+function drawForegroundLayer(
+  ctx: CanvasRenderingContext2D,
+  canvasDrawSize: number,
+  splats: Splat[][]
+) {
+  if (!splats.length) {
     return
   }
 
@@ -192,13 +211,13 @@ function drawScene(model: Model, canvas: HTMLCanvasElement, size: number) {
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
 
-  for (let s = 0; s < model.ketchupPaths.length; s++) {
-    const relativeSegment = model.ketchupPaths[s]
+  for (let s = 0; s < splats.length; s++) {
+    const relativeSegment = splats[s]
     const segment = relativeSegment.map(
       (k): SizedPoint => ({
-        x: k.x * size,
-        y: k.y * size,
-        size: (k.base + k.extra) * (size / 40),
+        x: k.x * canvasDrawSize,
+        y: k.y * canvasDrawSize,
+        size: (k.base + k.extra) * (canvasDrawSize / 40),
       })
     )
 
@@ -319,15 +338,65 @@ function updatePaths(model: Model, delta: number) {
   lastPath.push(newPoint)
 }
 
+function fullGameDraw(
+  model: Model
+): { type: 'active_canvas_not_available' } | undefined {
+  const activeCtx = model.drawCanvas.current?.getContext('2d')
+  if (!activeCtx) {
+    return { type: 'active_canvas_not_available' }
+  }
+
+  const canvasPixelSize = getCanvasPixelWidth(model.windowSize)
+  if (!canvasPixelSize) {
+    return
+  }
+
+  setUpCanvas(model, canvasPixelSize)
+
+  const canvasDrawSize = canvasPixelSize * 2
+  const offscreenCtx = model.offscreenCanvas.getContext('2d')
+  if (!offscreenCtx) {
+    return
+  }
+
+  offscreenCtx.clearRect(0, 0, canvasDrawSize, canvasDrawSize)
+  drawBaseLayer(offscreenCtx, canvasDrawSize)
+
+  const inactiveLines = model.ketchupPaths.slice(0, -1)
+  drawForegroundLayer(offscreenCtx, canvasDrawSize, inactiveLines)
+
+  activeCtx.drawImage(model.offscreenCanvas, 0, 0)
+  const lastLine = model.ketchupPaths.at(-1)
+  if (!lastLine) {
+    return
+  }
+
+  drawForegroundLayer(activeCtx, canvasDrawSize, [lastLine])
+}
+
+function updateWithDeferredFullDraw(model: Model): Change<Msg, Model> {
+  const result = fullGameDraw(model)
+  const effect = result
+    ? (dispatch: Dispatch<Msg>) =>
+        setTimeout(() => {
+          dispatch({ type: 'draw_canvas_mount' })
+        }, 100)
+    : undefined
+
+  return [model, effect]
+}
+
 function update(msg: Msg, model: Model): Change<Msg, Model> {
   switch (msg.type) {
     case 'start_game': {
-      return [
-        {
-          ...model,
-          scene: 'game',
-        },
-      ]
+      return updateWithDeferredFullDraw({
+        ...model,
+        scene: 'game',
+      })
+    }
+    case 'draw_canvas_mount': {
+      fullGameDraw(model)
+      return [model]
     }
     case 'open_about': {
       return [{ ...model, scene: 'about' }]
@@ -337,15 +406,12 @@ function update(msg: Msg, model: Model): Change<Msg, Model> {
         {
           ...model,
           scene: 'home',
-          windowSize: model.windowSize,
-          drawCanvas: model.drawCanvas,
         },
       ]
     }
     case 'window_size': {
       const newModel = { ...model, windowSize: msg.size }
-
-      setUpCanvas(newModel)
+      fullGameDraw(newModel)
       return [newModel]
     }
     case 'draw_tick': {
@@ -359,17 +425,27 @@ function update(msg: Msg, model: Model): Change<Msg, Model> {
         return [model]
       }
 
-      const r = setUpCanvas(model)
-      if (!r) {
+      const canvasPixelSize = getCanvasPixelWidth(model.windowSize)
+      if (!canvasPixelSize) {
         return [model]
       }
-      const [canvas, size] = r
 
       if (model.drawing && !model.squeezeDone) {
         updatePaths(model, delta)
       }
 
-      drawScene(model, canvas, size)
+      const activeCtx = model.drawCanvas.current?.getContext('2d')
+      if (!activeCtx) {
+        return [model]
+      }
+
+      const lastLine = model.ketchupPaths.at(-1)
+      if (!lastLine) {
+        return [model]
+      }
+
+      activeCtx.drawImage(model.offscreenCanvas, 0, 0)
+      drawForegroundLayer(activeCtx, canvasPixelSize * 2, [lastLine])
       return [{ ...model, lastTick: currentTick }]
     }
     case 'mouse_move': {
@@ -378,6 +454,18 @@ function update(msg: Msg, model: Model): Change<Msg, Model> {
     }
     case 'mouse_down': {
       const { x, y } = msg
+
+      const canvasPixelSize = getCanvasPixelWidth(model.windowSize)
+      if (canvasPixelSize) {
+        const offscreenCtx = model.offscreenCanvas.getContext('2d')
+        if (offscreenCtx) {
+          const lastLine = model.ketchupPaths.at(-1)
+          if (lastLine) {
+            drawForegroundLayer(offscreenCtx, canvasPixelSize * 2, [lastLine])
+          }
+        }
+      }
+
       model.ketchupPaths.push([])
       return [
         {
@@ -392,7 +480,18 @@ function update(msg: Msg, model: Model): Change<Msg, Model> {
       return [{ ...model, drawing: false, squeezeDone: true }]
     }
     case 'reset': {
-      return [{ ...model, dishId: crypto.randomUUID(), ketchupPaths: [] }]
+      return [
+        {
+          ...model,
+          dishId: crypto.randomUUID(),
+          ketchupPaths: [],
+        },
+        (dispatch: Dispatch<Msg>) => {
+          setTimeout(() => {
+            dispatch({ type: 'draw_canvas_mount' })
+          }, 100)
+        },
+      ]
     }
     case 'download': {
       const canvas = model.drawCanvas.current
@@ -451,72 +550,116 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
   const bottleBottom = model.cursorPosition.x + bottleSelfAdjustmentX
 
   return (
-    <div
-      className="app"
-      {...(model.touch
-        ? {
-            onTouchMove(e) {
-              const firstTouch = e.changedTouches.item(0)
-              if (!firstTouch) {
-                return
-              }
+    <div className="game">
+      <div
+        className="app"
+        {...(model.touch
+          ? {
+              onTouchMove(e) {
+                e.preventDefault()
+                const firstTouch = e.changedTouches.item(0)
+                if (!firstTouch) {
+                  return
+                }
 
-              dispatch({
-                type: 'mouse_move',
-                x: firstTouch.clientX,
-                y: firstTouch.clientY,
-              })
-            },
-          }
-        : {
-            onMouseMove(e) {
-              dispatch({ type: 'mouse_move', x: e.clientX, y: e.clientY })
-            },
-          })}
-      {...(model.touch
-        ? {
-            onTouchStart(e) {
-              const firstTouch = e.changedTouches.item(0)
-              if (!firstTouch) {
-                return
-              }
+                dispatch({
+                  type: 'mouse_move',
+                  x: firstTouch.clientX,
+                  y: firstTouch.clientY,
+                })
+              },
+            }
+          : {
+              onMouseMove(e) {
+                dispatch({ type: 'mouse_move', x: e.clientX, y: e.clientY })
+              },
+            })}
+        {...(model.touch
+          ? {
+              onTouchStart(e) {
+                e.preventDefault()
+                const firstTouch = e.changedTouches.item(0)
+                if (!firstTouch) {
+                  return
+                }
 
-              dispatch({
-                type: 'mouse_down',
-                x: firstTouch.clientX,
-                y: firstTouch.clientY,
-              })
-            },
-            onTouchEnd(e) {
-              const firstTouch = e.changedTouches.item(0)
-              if (!firstTouch) {
-                return
-              }
+                dispatch({
+                  type: 'mouse_down',
+                  x: firstTouch.clientX,
+                  y: firstTouch.clientY,
+                })
+              },
+              onTouchEnd(e) {
+                e.preventDefault()
+                const firstTouch = e.changedTouches.item(0)
+                if (!firstTouch) {
+                  return
+                }
 
-              dispatch({
-                type: 'mouse_up',
-                x: firstTouch.clientX,
-                y: firstTouch.clientY,
-              })
-            },
-          }
-        : {
-            onMouseDown(e) {
-              dispatch({
-                type: 'mouse_down',
-                x: e.clientX,
-                y: e.clientY,
-              })
-            },
-            onMouseUp(e) {
-              dispatch({
-                type: 'mouse_up',
-                x: e.clientX,
-                y: e.clientY,
-              })
-            },
-          })}
-    >
+                dispatch({
+                  type: 'mouse_up',
+                  x: firstTouch.clientX,
+                  y: firstTouch.clientY,
+                })
+              },
+            }
+          : {
+              onMouseDown(e) {
+                e.preventDefault()
+                dispatch({
+                  type: 'mouse_down',
+                  x: e.clientX,
+                  y: e.clientY,
+                })
+              },
+              onMouseUp(e) {
+                e.preventDefault()
+                dispatch({
+                  type: 'mouse_up',
+                  x: e.clientX,
+                  y: e.clientY,
+                })
+              },
+            })}
+      >
+        <div key={model.dishId} className="main-area">
+          <canvas id="canvas" ref={model.drawCanvas} />
+        </div>
+
+        <div
+          id="hand"
+          style={{
+            top: `${bottleTop}px`,
+            left: `${bottleBottom}px`,
+          }}
+          ref={model.cursorRef}
+        >
+          <img alt="" id="bottle" src={'./bottle.png'} />
+          <div className="spray-bottom">
+            <div
+              className="spray-shadow"
+              style={{ opacity: model.drawing ? 0 : undefined }}
+            />
+            <img alt="" className="spray-ghost" src="./spray.png" />
+            <img
+              alt=""
+              src="./spray.png"
+              className={
+                model.squeezeDone
+                  ? 'spray-sauce spray-squeeze-exit'
+                  : 'spray-sauce'
+              }
+              style={{
+                // We flip the spray back and forth to flow of ketchup
+                transform:
+                  model.drawing && (Date.now() / 100) % 2 > 1
+                    ? 'scale(-1, 1)'
+                    : undefined,
+              }}
+            />
+          </div>
+        </div>
+      </div>
       <div className="toolbar">
         <div className="toolbar-bar">
           <h1>{model.content.title}</h1>
@@ -528,44 +671,6 @@ function view(model: Model, dispatch: Dispatch<Msg>) {
               {model.content.downloadButton}
             </button>
           </div>
-        </div>
-      </div>
-
-      <div key={model.dishId} className="main-area">
-        <canvas id="canvas" ref={model.drawCanvas} />
-      </div>
-
-      <div
-        id="hand"
-        style={{
-          top: `${bottleTop}px`,
-          left: `${bottleBottom}px`,
-        }}
-        ref={model.cursorRef}
-      >
-        <img alt="" id="bottle" src={'./bottle.png'} />
-        <div className="spray-bottom">
-          <div
-            className="spray-shadow"
-            style={{ opacity: model.drawing ? 0 : undefined }}
-          />
-          <img alt="" className="spray-ghost" src="./spray.png" />
-          <img
-            alt=""
-            src="./spray.png"
-            className={
-              model.squeezeDone
-                ? 'spray-sauce spray-squeeze-exit'
-                : 'spray-sauce'
-            }
-            style={{
-              // We flip the spray back and forth to flow of ketchup
-              transform:
-                model.drawing && (Date.now() / 100) % 2 > 1
-                  ? 'scale(-1, 1)'
-                  : undefined,
-            }}
-          />
         </div>
       </div>
     </div>
@@ -586,6 +691,7 @@ function homeView(model: Model, dispatch: Dispatch<Msg>) {
           ] as [Locale, string][]
         ).map(([locale, name]) => (
           <button
+            key={locale}
             className={model.locale === locale ? 'active' : undefined}
             onClick={() => dispatch({ type: 'locale_change', locale })}
           >
